@@ -1,0 +1,14 @@
+USAGE:
+
+  hpad init FILE
+
+    Start backing FILE with hyperpad.
+
+  hpad update FILE
+
+    Update the underlying hyperpad with any updates to FILE.
+
+  hpad sync FILE
+
+    Find peers online and on the local network to exchange updates with.
+
