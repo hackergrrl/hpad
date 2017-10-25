@@ -19,6 +19,7 @@
   "keywords": [],
   "dependencies": {
     "hyper-string": "^2.0.2",
+    "level": "^2.0.0",
     "minimist": "^1.2.0"
   },
   "devDependencies": {
