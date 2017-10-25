@@ -5,6 +5,7 @@ var path = require('path')
 var args = require('minimist')(process.argv)
 var hstring = require('hyper-string')
 var level = require('level')
+var diff = require('diff').diffWordsWithSpace
 
 if (args.h || args.help) {
   return exit(0)
