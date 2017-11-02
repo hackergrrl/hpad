@@ -6,6 +6,9 @@ var args = require('minimist')(process.argv)
 var hstring = require('hyper-string')
 var level = require('level')
 var diff = require('diff').diffWordsWithSpace
+var swarm = require('discovery-swarm')
+var indexer = require('hyperlog-index')
+var memdb = require('memdb')
 
 if (args.h || args.help) {
   return exit(0)
@@ -31,6 +34,8 @@ if (subcommand === 'init') {
   }
   var str = hstring(level(dbpath))
   var txt = fs.readFileSync(file, 'utf8')
+  // TODO: think about how to denote a unique ID for a doc at init time
+  str.log.append({id:'foobaxxy'})
   str.insert(null, txt, function (err) {
     if (err) throw err
     console.log('Now backing', file, 'with a hyperpad.')
@@ -79,6 +84,47 @@ if (subcommand === 'init') {
     processChange()
   })
 } else if (subcommand === 'sync') {
+  if (!fs.existsSync(file)) {
+    return exit(1)
+  }
+  var filename = '.hpad-' + path.basename(file)
+  var dirname = path.dirname(file)
+  var dbpath = path.join(dirname, filename)
+  if (!fs.existsSync(dbpath)) {
+    console.error('ERROR:', file, 'isnt backed by a hyperpad.')
+    return process.exit(1)
+  }
+  var str = hstring(level(dbpath))
+  var idx = createIndex(str)
+  idx.ready(function () {
+    var sw = swarm()
+    sw.listen(1292 + Math.floor(Math.random() * 3000))
+    console.log('joining swarm', idx.id)
+    sw.join(idx.id)
+
+    var seen = {}
+    sw.on('connection', function (socket, info) {
+      var peerId = info.host + '|' + info.port
+      console.log('found peer', peerId)
+      if (seen[peerId]) {
+        console.log('skipping already-seen peer', peerId)
+        return
+      }
+      seen[peerId] = true
+      console.log('replicating to peer', peerId + '..')
+      replicate(str.log.replicate(), socket, function (err) {
+        console.log('replicated to peer', peerId + '!')
+
+        // update file
+        idx.ready(function () {
+          str.text(function (err, txt) {
+            fs.writeFileSync(file, txt, 'utf8')
+            console.log('file updated')
+          })
+        })
+      })
+    })
+  })
 } else if (subcommand === 'print') {
   if (!fs.existsSync(file)) {
     return exit(1)
@@ -106,3 +152,43 @@ function exit (code) {
   })
 }
 
+function replicate (r1, r2, cb) {
+//  r1.on('data', console.log)
+//  r2.on('data', console.log)
+  r1.once('end', done)
+  r2.once('end', done)
+  r1.once('error', done)
+  r2.once('error', done)
+
+  r1.pipe(r2).pipe(r1)
+
+  var pending = 2
+  function done (err) {
+    if (err) {
+      pending = Infinity
+      return cb(err)
+    }
+    if (--pending) {
+      return
+    }
+    cb()
+  }
+}
+
+function createIndex (string) {
+  var idx = indexer({
+    log: string.log,
+    db: memdb(),
+    map: map
+  })
+
+  function map (row, next) {
+    if (row.value.id) {
+      idx.id = row.value.id
+      console.log('id', row.value)
+    }
+    next()
+  }
+
+  return idx
+}
