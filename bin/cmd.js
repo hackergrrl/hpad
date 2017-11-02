@@ -22,20 +22,6 @@ if (args._.length !== 4) {
 var subcommand = args._[2]
 var file = args._[3]
 
-function getDb (file, existsOkay) {
-  if (!fs.existsSync(file)) {
-    return exit(1)
-  }
-  var filename = '.hpad-' + path.basename(file)
-  var dirname = path.dirname(file)
-  var dbpath = path.join(dirname, filename)
-  if (!existsOkay && fs.existsSync(dbpath)) {
-    console.error('ERROR:', file, 'is already backed by a hyperpad.')
-    return process.exit(1)
-  }
-  return hstring(level(dbpath))
-}
-
 if (subcommand === 'init') {
   var str = getDb(file)
   var txt = fs.readFileSync(file, 'utf8')
@@ -56,9 +42,8 @@ if (subcommand === 'init') {
     var pos = 0
     function processChange () {
       if (!changes.length) {
-        var idx = createIndex(str)
-        idx.ready(function () {
-          console.log('['+idx.id+'] updated', file)
+        str.id(function (err, id) {
+          console.log('['+id+'] updated', file)
         })
         return
       }
@@ -83,14 +68,12 @@ if (subcommand === 'init') {
   })
 } else if (subcommand === 'sync') {
   var str = getDb(file, true)
-  var idx = createIndex(str)
-  idx.ready(function () {
-    console.log('['+idx.id+'] syncing', file)
+  str.id(function (err, id) {
+    console.log('['+id+'] joining swarm for', file)
     var sw = swarm()
     sw.listen(1292 + Math.floor(Math.random() * 3000))
-    console.log('Joining swarm', idx.id, '\n')
     console.log('Press CTRL+C to terminate synchronization..')
-    sw.join(idx.id)
+    sw.join(id)
 
     var seen = {}
     sw.on('connection', function (socket, info) {
@@ -132,6 +115,29 @@ function exit (code) {
   })
 }
 
+function getDb (file, existsOkay) {
+  if (!fs.existsSync(file)) {
+    return exit(1)
+  }
+  var filename = '.hpad-' + path.basename(file)
+  var dirname = path.dirname(file)
+  var dbpath = path.join(dirname, filename)
+  if (!existsOkay && fs.existsSync(dbpath)) {
+    console.error('ERROR:', file, 'is already backed by a hyperpad.')
+    return process.exit(1)
+  }
+  var str = hstring(level(dbpath))
+  var idx = createIndex(str)
+
+  str.id = function (cb) {
+    idx.ready(function () {
+      cb(null, idx.id)
+    })
+  }
+  
+  return str
+}
+
 function replicate (r1, r2, cb) {
 //  r1.on('data', console.log)
 //  r2.on('data', console.log)
@@ -158,15 +164,24 @@ function replicate (r1, r2, cb) {
 function createIndex (string) {
   var idx = indexer({
     log: string.log,
-    db: memdb(),
+    db: string.log.db,
     map: map
   })
 
+  string.log.db.get('hpad-idx-id', function (err, docId) {
+    if (err && !err.notFound) throw err
+    idx.id = docId
+  })
+
   function map (row, next) {
+    if (idx.id) return next()
+    
     if (row.value.id) {
       idx.id = row.value.id
+      string.log.db.put('hpad-idx-id', row.value.id, next)
+    } else {
+      next()
     }
-    next()
   }
 
   return idx
