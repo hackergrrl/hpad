@@ -99,7 +99,8 @@ if (subcommand === 'init') {
   idx.ready(function () {
     var sw = swarm()
     sw.listen(1292 + Math.floor(Math.random() * 3000))
-    console.log('joining swarm', idx.id)
+    console.log('Joining swarm', idx.id, '\n')
+    console.log('Press CTRL+C to terminate synchronization..')
     sw.join(idx.id)
 
     var seen = {}
@@ -185,7 +186,6 @@ function createIndex (string) {
   function map (row, next) {
     if (row.value.id) {
       idx.id = row.value.id
-      console.log('id', row.value)
     }
     next()
   }
