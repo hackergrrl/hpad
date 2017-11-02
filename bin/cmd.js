@@ -9,6 +9,7 @@ var diff = require('diff').diffWordsWithSpace
 var swarm = require('discovery-swarm')
 var indexer = require('hyperlog-index')
 var memdb = require('memdb')
+var randombytes = require('randombytes')
 
 if (args.h || args.help) {
   return exit(0)
@@ -34,11 +35,11 @@ if (subcommand === 'init') {
   }
   var str = hstring(level(dbpath))
   var txt = fs.readFileSync(file, 'utf8')
-  // TODO: think about how to denote a unique ID for a doc at init time
-  str.log.append({id:'foobaxxy'})
+  var docId = randombytes(12).toString('hex')
+  str.log.append({id:docId})
   str.insert(null, txt, function (err) {
     if (err) throw err
-    console.log('Now backing', file, 'with a hyperpad to', dbpath)
+    console.log('['+docId+'] created hyperpad for', file)
   })
 } else if (subcommand === 'update') {
   if (!fs.existsSync(file)) {
@@ -61,20 +62,23 @@ if (subcommand === 'init') {
     var pos = 0
     function processChange () {
       if (!changes.length) {
-        console.error('done')
+        var idx = createIndex(str)
+        idx.ready(function () {
+          console.log('['+idx.id+'] updated', file)
+        })
         return
       }
       var change = changes.shift()
-      console.log('change', change, pos)
+//      console.log('change', change, pos)
       if (!change.added && !change.removed) {
         pos += change.value.length
         process.nextTick(processChange)
       } else if (change.added) {
-        console.log('inserting', change.value, 'at', chars[pos].pos)
+//        console.log('inserting', change.value, 'at', chars[pos].pos)
         var at = pos > 0 ? chars[pos-1].pos : null
         str.insert(at, change.value, processChange)
       } else if (change.removed) {
-        console.log('deleting', change.value.length, 'at', chars[pos].pos)
+//        console.log('deleting', change.value.length, 'at', chars[pos].pos)
         str.delete(chars[pos].pos, change.value.length, processChange)
         pos += change.value.length
       } else {
@@ -97,6 +101,7 @@ if (subcommand === 'init') {
   var str = hstring(level(dbpath))
   var idx = createIndex(str)
   idx.ready(function () {
+    console.log('['+idx.id+'] syncing', file)
     var sw = swarm()
     sw.listen(1292 + Math.floor(Math.random() * 3000))
     console.log('Joining swarm', idx.id, '\n')
