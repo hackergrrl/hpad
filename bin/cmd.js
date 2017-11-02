@@ -22,18 +22,22 @@ if (args._.length !== 4) {
 var subcommand = args._[2]
 var file = args._[3]
 
-if (subcommand === 'init') {
+function getDb (file, existsOkay) {
   if (!fs.existsSync(file)) {
     return exit(1)
   }
   var filename = '.hpad-' + path.basename(file)
   var dirname = path.dirname(file)
   var dbpath = path.join(dirname, filename)
-  if (fs.existsSync(dbpath)) {
+  if (!existsOkay && fs.existsSync(dbpath)) {
     console.error('ERROR:', file, 'is already backed by a hyperpad.')
     return process.exit(1)
   }
-  var str = hstring(level(dbpath))
+  return hstring(level(dbpath))
+}
+
+if (subcommand === 'init') {
+  var str = getDb(file)
   var txt = fs.readFileSync(file, 'utf8')
   var docId = randombytes(12).toString('hex')
   str.log.append({id:docId})
@@ -42,17 +46,7 @@ if (subcommand === 'init') {
     console.log('['+docId+'] created hyperpad for', file)
   })
 } else if (subcommand === 'update') {
-  if (!fs.existsSync(file)) {
-    return exit(1)
-  }
-  var filename = '.hpad-' + path.basename(file)
-  var dirname = path.dirname(file)
-  var dbpath = path.join(dirname, filename)
-  if (!fs.existsSync(dbpath)) {
-    console.error('ERROR:', file, 'isnt backed by a hyperpad.')
-    return process.exit(1)
-  }
-  var str = hstring(level(dbpath))
+  var str = getDb(file, true)
   var txt = fs.readFileSync(file, 'utf8')
   str.chars(function (err, chars) {
     if (err) throw err
@@ -88,17 +82,7 @@ if (subcommand === 'init') {
     processChange()
   })
 } else if (subcommand === 'sync') {
-  if (!fs.existsSync(file)) {
-    return exit(1)
-  }
-  var filename = '.hpad-' + path.basename(file)
-  var dirname = path.dirname(file)
-  var dbpath = path.join(dirname, filename)
-  if (!fs.existsSync(dbpath)) {
-    console.error('ERROR:', file, 'isnt backed by a hyperpad.')
-    return process.exit(1)
-  }
-  var str = hstring(level(dbpath))
+  var str = getDb(file, true)
   var idx = createIndex(str)
   idx.ready(function () {
     console.log('['+idx.id+'] syncing', file)
@@ -132,17 +116,7 @@ if (subcommand === 'init') {
     })
   })
 } else if (subcommand === 'print') {
-  if (!fs.existsSync(file)) {
-    return exit(1)
-  }
-  var filename = '.hpad-' + path.basename(file)
-  var dirname = path.dirname(file)
-  var dbpath = path.join(dirname, filename)
-  if (!fs.existsSync(dbpath)) {
-    console.error('ERROR:', file, 'isnt backed by a hyperpad.')
-    return process.exit(1)
-  }
-  var str = hstring(level(dbpath))
+  var str = getDb(file, true)
   str.text(function (err, txt) {
     console.log(txt)
   })
