@@ -38,7 +38,7 @@ if (subcommand === 'init') {
   str.log.append({id:'foobaxxy'})
   str.insert(null, txt, function (err) {
     if (err) throw err
-    console.log('Now backing', file, 'with a hyperpad.')
+    console.log('Now backing', file, 'with a hyperpad to', dbpath)
   })
 } else if (subcommand === 'update') {
   if (!fs.existsSync(file)) {
