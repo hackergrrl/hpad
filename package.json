@@ -2,7 +2,7 @@
   "name": "hpad",
   "description": "command line version of hyperpad",
   "author": "Stephen Whitmore <sww@eight45.net>",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "repository": {
     "url": "git://github.com/noffle/hpad.git"
   },
