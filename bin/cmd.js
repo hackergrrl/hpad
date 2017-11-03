@@ -34,76 +34,56 @@ if (subcommand === 'init') {
 } else if (subcommand === 'update') {
   var str = getDb(file, true)
   var txt = fs.readFileSync(file, 'utf8')
-  str.chars(function (err, chars) {
-    if (err) throw err
-    var htxt = chars.map(function (ch) { return ch.chr }).join('')
-    var changes = diff(htxt, txt)
 
-    var pos = 0
-    function processChange () {
-      if (!changes.length) {
-        str.id(function (err, id) {
-          console.log('['+id+'] updated', file)
-        })
-        return
-      }
-      var change = changes.shift()
-      // console.log('change', change, pos)
-      if (!change.added && !change.removed) {
-        pos += change.value.length
-        process.nextTick(processChange)
-      } else if (change.added) {
-        var at = pos > 0 ? chars[pos-1].pos : null
-        // console.log('inserting', change.value, 'at', at)
-        str.insert(at, change.value, processChange)
-      } else if (change.removed) {
-        // console.log('deleting', change.value.length, 'at', chars[pos].pos)
-        str.delete(chars[pos].pos, change.value.length, processChange)
-        pos += change.value.length
-      } else {
-        throw new Error('this shouldn\'t happen')
-      }
-    }
-    processChange()
+  update(str, txt, function (err) {
+    if (err) throw err
+    str.id(function (err, id) {
+      console.log('['+id+'] updated', file)
+    })
   })
 } else if (subcommand === 'sync') {
   var str = getDb(file, true)
-  str.id(function (err, id) {
-    console.log('['+id+'] joining swarm for', file)
-    var sw = swarm()
-    var port = 1292 + Math.floor(Math.random() * 3000)
-    sw.listen(port)
-    console.log('listening on', port)
-    console.log('Press CTRL+C to terminate synchronization..')
-    sw.join(id)
 
-    var seen = {}
-    sw.on('connection', function (socket, info) {
-      var peerId = info.host + '|' + info.port
-      console.log('found peer', peerId)
-      if (seen[peerId]) {
-        console.log('skipping already-seen peer', peerId)
-        return
-      }
-      seen[peerId] = true
-      console.log('replicating to peer', peerId + '..')
-      replicate(str.log.replicate(), socket, function (err) {
-        console.log('replicated to peer', peerId + '!')
+  // do an automatic 'update' op before sync'ing
+  update(str, fs.readFileSync(file, 'utf8'), function () {
+    // sync!
+    str.id(function (err, id) {
+      console.log('['+id+'] joining swarm for', file)
+      var sw = swarm()
+      var port = 1292 + Math.floor(Math.random() * 3000)
+      sw.listen(port)
+      console.log('listening on', port)
+      console.log('Press CTRL+C to terminate synchronization..')
+      sw.join(id)
 
-        // update file
-        str.id(function (err, id) {
-          str.text(function (err, txt) {
-            fs.writeFileSync(file, txt, 'utf8')
-            console.log('file updated')
+      var seen = {}
+      sw.on('connection', function (socket, info) {
+        var peerId = info.host + '|' + info.port
+        console.log('found peer', peerId)
+        if (seen[peerId]) {
+          console.log('skipping already-seen peer', peerId)
+          return
+        }
+        seen[peerId] = true
+        console.log('replicating to peer', peerId + '..')
+        replicate(str.log.replicate(), socket, function (err) {
+          console.log('replicated to peer', peerId + '!')
+
+          // update file
+          str.id(function (err, id) {
+            str.text(function (err, txt) {
+              fs.writeFileSync(file, txt, 'utf8')
+              console.log('file updated')
+            })
           })
         })
       })
     })
   })
-} else if (subcommand === 'print') {
+} else if (subcommand === 'cat') {
   var str = getDb(file, true)
   str.text(function (err, txt) {
-    console.log(txt)
+    process.stdout.write(txt)
   })
 } else if (subcommand === 'clone') {
   var key = file
@@ -233,3 +213,35 @@ function createIndex (string) {
 
   return idx
 }
+
+  function update (str, txt, cb) {
+    str.chars(function (err, chars) {
+      if (err) throw err
+      var htxt = chars.map(function (ch) { return ch.chr }).join('')
+      var changes = diff(htxt, txt)
+
+      var pos = 0
+      function processChange () {
+        if (!changes.length) {
+          return cb()
+        }
+        var change = changes.shift()
+        console.log('change', change, pos)
+        if (!change.added && !change.removed) {
+          pos += change.value.length
+          process.nextTick(processChange)
+        } else if (change.added) {
+          var at = pos > 0 ? chars[pos-1].pos : null
+          console.log('inserting', change.value, 'at', at)
+          str.insert(at, change.value, processChange)
+        } else if (change.removed) {
+          console.log('deleting', change.value.length, 'at', chars[pos].pos)
+          str.delete(chars[pos].pos, change.value.length, processChange)
+          pos += change.value.length
+        } else {
+          throw new Error('this shouldn\'t happen')
+        }
+      }
+      processChange()
+    })
+  }
