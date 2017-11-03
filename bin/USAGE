@@ -4,11 +4,16 @@ USAGE:
 
     Start backing FILE with hyperpad.
 
+  hpad clone KEY
+
+    Create a local copy of a hyperpad document from the swarm.
+
   hpad update FILE
 
     Update the underlying hyperpad with any updates to FILE.
 
   hpad sync FILE
 
-    Find peers online and on the local network to exchange updates with.
+    Join the swarm for this document online & on the local network to
+    share and exchange updates.
 

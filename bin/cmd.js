@@ -26,7 +26,7 @@ if (subcommand === 'init') {
   var str = getDb(file)
   var txt = fs.readFileSync(file, 'utf8')
   var docId = randombytes(12).toString('hex')
-  str.log.append({id:docId})
+  str.log.append({id:docId, filename:file})
   str.insert(null, txt, function (err) {
     if (err) throw err
     console.log('['+docId+'] created hyperpad for', file)
@@ -48,16 +48,16 @@ if (subcommand === 'init') {
         return
       }
       var change = changes.shift()
-//      console.log('change', change, pos)
+      // console.log('change', change, pos)
       if (!change.added && !change.removed) {
         pos += change.value.length
         process.nextTick(processChange)
       } else if (change.added) {
-//        console.log('inserting', change.value, 'at', chars[pos].pos)
         var at = pos > 0 ? chars[pos-1].pos : null
+        // console.log('inserting', change.value, 'at', at)
         str.insert(at, change.value, processChange)
       } else if (change.removed) {
-//        console.log('deleting', change.value.length, 'at', chars[pos].pos)
+        // console.log('deleting', change.value.length, 'at', chars[pos].pos)
         str.delete(chars[pos].pos, change.value.length, processChange)
         pos += change.value.length
       } else {
@@ -71,7 +71,9 @@ if (subcommand === 'init') {
   str.id(function (err, id) {
     console.log('['+id+'] joining swarm for', file)
     var sw = swarm()
-    sw.listen(1292 + Math.floor(Math.random() * 3000))
+    var port = 1292 + Math.floor(Math.random() * 3000)
+    sw.listen(port)
+    console.log('listening on', port)
     console.log('Press CTRL+C to terminate synchronization..')
     sw.join(id)
 
@@ -89,7 +91,7 @@ if (subcommand === 'init') {
         console.log('replicated to peer', peerId + '!')
 
         // update file
-        idx.ready(function () {
+        str.id(function (err, id) {
           str.text(function (err, txt) {
             fs.writeFileSync(file, txt, 'utf8')
             console.log('file updated')
@@ -102,6 +104,43 @@ if (subcommand === 'init') {
   var str = getDb(file, true)
   str.text(function (err, txt) {
     console.log(txt)
+  })
+} else if (subcommand === 'clone') {
+  var key = file
+  var memstr = hstring(memdb())
+  var idx = createIndex(memstr)
+  console.log('['+key+'] joining swarm for', key)
+  var sw = swarm()
+  var port = 1292 + Math.floor(Math.random() * 3000)
+  sw.listen(port)
+  console.log('listening on', port)
+  console.log('Press CTRL+C to terminate cloning..')
+  sw.join(key)
+
+  sw.once('connection', function (socket, info) {
+    var peerId = info.host + '|' + info.port
+    console.log('found peer', peerId)
+    console.log('replicating to peer', peerId + '..')
+    replicate(memstr.log.replicate(), socket, function (err) {
+      console.log('replicated to peer', peerId + '!')
+
+      // update file
+      idx.ready(function () {
+        memstr.text(function (err, txt) {
+          console.log('idx', idx)
+          if (fs.exists(idx.filename)) {
+            console.log('ERROR:', idx.filename, 'already exists; cannot clone.')
+            return process.exit(1)
+          }
+          fs.writeFileSync(idx.filename, txt, 'utf8')
+          console.log('file written')
+          var str = hstring(level('.hpad-' + idx.filename))
+          replicate(memstr.log.replicate(), str.log.replicate(), function (err) {
+            console.log('db written')
+          })
+        })
+      })
+    })
   })
 } else {
   exit(1)
@@ -171,14 +210,22 @@ function createIndex (string) {
   string.log.db.get('hpad-idx-id', function (err, docId) {
     if (err && !err.notFound) throw err
     idx.id = docId
+    string.log.db.get('hpad-idx-filename', function (err, docName) {
+      if (err && !err.notFound) throw err
+      idx.filename = docName
+    })
   })
 
   function map (row, next) {
-    if (idx.id) return next()
+    if (idx.id && idx.filename) return next()
     
     if (row.value.id) {
       idx.id = row.value.id
-      string.log.db.put('hpad-idx-id', row.value.id, next)
+      idx.filename = row.value.filename
+      string.log.db.put('hpad-idx-id', row.value.id, function (err) {
+        if (err) return next(err)
+        string.log.db.put('hpad-idx-filename', row.value.filename, next)
+      })
     } else {
       next()
     }
