@@ -10,6 +10,7 @@ var swarm = require('discovery-swarm')
 var indexer = require('hyperlog-index')
 var memdb = require('memdb')
 var randombytes = require('randombytes')
+var rimraf = require('rimraf')
 
 if (args.h || args.help) {
   return exit(0)
@@ -125,6 +126,13 @@ if (subcommand === 'init') {
       })
     })
   })
+} else if (subcommand === 'rm') {
+  var filename = '.hpad-' + path.basename(file)
+  var dirname = path.dirname(file)
+  var dbpath = path.join(dirname, filename)
+  if (fs.existsSync(file) && fs.existsSync(dbpath)) {
+    rimraf.sync(dbpath)
+  }
 } else {
   exit(1)
 }
