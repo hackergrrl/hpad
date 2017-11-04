@@ -8,7 +8,7 @@ A command line version of the (wip) web app
 
 ## Usage
 
-1. `hpad init FILE` a new or existing document
+1. run `hpad init FILE` on a new or existing document on your computer
 2. edit `FILE` whenever you want in your favourite text editor
 3. share the `KEY` outputted by `hpad init` with your friends
 4. `hpad seed FILE` to share your changes & pull others online and from the
