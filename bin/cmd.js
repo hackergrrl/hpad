@@ -23,6 +23,9 @@ var subcommand = args._[2]
 var file = args._[3]
 
 if (subcommand === 'init') {
+  if (!fs.existsSync(file)) {
+    fs.writeFileSync(file, '', 'utf8')
+  }
   var str = getDb(file)
   var txt = fs.readFileSync(file, 'utf8')
   var docId = randombytes(12).toString('hex')
