@@ -78,6 +78,12 @@ USAGE:
     List all hyperpad documents in the current directory, and their keys.
 ```
 
+## Values
+
+1. no lock-in: let everyone keep using the editors they like in plaintext
+2. peer-to-peer: no central servers or corporate ownership
+3. open source: hack and fork the world!
+
 ## Install
 
 With [npm](https://npmjs.org/) installed, run
