@@ -45,7 +45,7 @@ if (subcommand === 'init') {
       console.log('['+id+'] updated', file)
     })
   })
-} else if (subcommand === 'sync') {
+} else if (subcommand === 'seed') {
   var str = getDb(file, true)
 
   // do an automatic 'update' op before sync'ing
