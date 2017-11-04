@@ -3,8 +3,7 @@
 > Create and edit peer-to-peer documents with your favourite text editor, then
 > sync them to peers from the command line!
 
-A command line version of the (wip) web app
-[hyperpad](https://github.com/noffle/hyperpad).
+A command line interface of *[hyperpad](https://github.com/noffle/hyperpad)*.
 
 ## Usage
 
