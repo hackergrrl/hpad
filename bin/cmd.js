@@ -111,16 +111,15 @@ if (subcommand === 'init') {
       // update file
       idx.ready(function () {
         memstr.text(function (err, txt) {
-          console.log('idx', idx)
           if (fs.exists(idx.filename)) {
             console.log('ERROR:', idx.filename, 'already exists; cannot clone.')
             return process.exit(1)
           }
           fs.writeFileSync(idx.filename, txt, 'utf8')
-          console.log('file written')
           var str = hstring(level('.hpad-' + idx.filename))
           replicate(memstr.log.replicate(), str.log.replicate(), function (err) {
-            console.log('db written')
+            console.log('done')
+            process.exit(0)
           })
         })
       })
