@@ -6,6 +6,15 @@
 A command line version of the (wip) web app
 [hyperpad](https://github.com/noffle/hyperpad).
 
+## Usage
+
+1. `hpad init FILE` a new or existing document
+2. edit `FILE` whenever you want in your favourite text editor
+3. share the `KEY` outputted by `hpad init` with your friends
+4. `hpad seed FILE` to share your changes & pull others online and from the
+   local network
+5. all changes pulled automatically update your local copy of `FILE`
+
 ## Example
 
 ```
@@ -47,7 +56,7 @@ hello world!
 wow p2p so fresh
 ```
 
-## Usage
+## CLI Usage
 
 ```
 USAGE:
