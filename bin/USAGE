@@ -13,3 +13,7 @@ USAGE:
     Join the swarm for this document online & on the local network to
     share and exchange updates. Command runs until manually terminated.
 
+  hpad ls
+
+    List all hyperpad documents in the current directory, and their keys.
+

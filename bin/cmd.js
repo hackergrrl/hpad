@@ -16,14 +16,13 @@ if (args.h || args.help) {
   return exit(0)
 }
 
-if (args._.length !== 4) {
-  return exit(1)
-}
-
 var subcommand = args._[2]
 var file = args._[3]
 
 if (subcommand === 'init') {
+  if (args._.length !== 4) {
+    return exit(1)
+  }
   if (!fs.existsSync(file)) {
     fs.writeFileSync(file, '', 'utf8')
   }
@@ -36,6 +35,9 @@ if (subcommand === 'init') {
     console.log('['+docId+'] created hyperpad for', file)
   })
 } else if (subcommand === 'update') {
+  if (args._.length !== 4) {
+    return exit(1)
+  }
   var str = getDb(file, true)
   var txt = fs.readFileSync(file, 'utf8')
 
@@ -46,6 +48,9 @@ if (subcommand === 'init') {
     })
   })
 } else if (subcommand === 'seed') {
+  if (args._.length !== 4) {
+    return exit(1)
+  }
   var str = getDb(file, true)
 
   // do an automatic 'update' op before sync'ing
@@ -85,11 +90,17 @@ if (subcommand === 'init') {
     })
   })
 } else if (subcommand === 'cat') {
+  if (args._.length !== 4) {
+    return exit(1)
+  }
   var str = getDb(file, true)
   str.text(function (err, txt) {
     process.stdout.write(txt)
   })
 } else if (subcommand === 'clone') {
+  if (args._.length !== 4) {
+    return exit(1)
+  }
   var key = file
   var memstr = hstring(memdb())
   var idx = createIndex(memstr)
@@ -126,12 +137,33 @@ if (subcommand === 'init') {
     })
   })
 } else if (subcommand === 'rm') {
+  if (args._.length !== 4) {
+    return exit(1)
+  }
   var filename = '.hpad-' + path.basename(file)
   var dirname = path.dirname(file)
   var dbpath = path.join(dirname, filename)
   if (fs.existsSync(file) && fs.existsSync(dbpath)) {
     rimraf.sync(dbpath)
   }
+} else if (subcommand === 'ls') {
+  if (args._.length !== 3) {
+    return exit(1)
+  }
+  fs.readdir(process.cwd(), function (err, data) {
+    if (err) throw err
+    data
+      .filter(function (filename) {
+        return /^.hpad-/.test(filename)
+      })
+      .forEach(function (dbname) {
+        var fname = dbname.substring(6)
+        var str = getDb(fname, true)
+        str.id(function (err, key) {
+          console.log('[' + key + ']', fname)
+        })
+      })
+  })
 } else {
   exit(1)
 }
