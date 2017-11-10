@@ -30,7 +30,7 @@ if (subcommand === 'init') {
   var txt = fs.readFileSync(file, 'utf8')
   var docId = randombytes(12).toString('hex')
   str.log.append({id:docId, filename:file})
-  str.insert(null, txt, function (err) {
+  str.insert(null, null, txt, function (err) {
     if (err) throw err
     console.log('['+docId+'] created hyperpad for', file)
   })
@@ -268,17 +268,18 @@ function createIndex (string) {
           return cb()
         }
         var change = changes.shift()
-        console.log('change', change, pos)
+        // console.log('change', change, pos)
         if (!change.added && !change.removed) {
           pos += change.value.length
           process.nextTick(processChange)
         } else if (change.added) {
-          var at = pos > 0 ? chars[pos-1].pos : null
-          console.log('inserting', change.value, 'at', at)
-          str.insert(at, change.value, processChange)
+          var prev = pos > 0 ? chars[pos-1].pos : null
+          var next = chars[pos] ? chars[pos].pos : null
+          // console.log('inserting', change.value, 'between', prev, 'and', next)
+          str.insert(prev, next, change.value, processChange)
         } else if (change.removed) {
-          console.log('deleting', change.value.length, 'at', chars[pos].pos)
-          str.delete(chars[pos].pos, change.value.length, processChange)
+          // console.log('deleting from', chars[pos].pos, 'to', chars[pos + change.value.length - 1].pos)
+          str.delete(chars[pos].pos, chars[pos + change.value.length - 1].pos, processChange)
           pos += change.value.length
         } else {
           throw new Error('this shouldn\'t happen')
